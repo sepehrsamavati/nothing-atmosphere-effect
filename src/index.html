@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bubble Morph Animation</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: black;
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="bubbleCanvas"></canvas>
+
+    <script>
+        // Configuration
+        const maxCanvasFPS = 30;
+        const maxCanvasRefreshInterval = Math.round(1000 / maxCanvasFPS);
+
+        // Bubble structure
+        class Bubble {
+            constructor(startX, startY, endX, endY, startRadius, endRadius, color, speed, index, canvasWidth, canvasHeight) {
+                this.startX = startX;
+                this.startY = startY;
+                this.endX = endX;
+                this.endY = endY;
+                this.x = startX;
+                this.y = startY;
+                this.startRadius = startRadius;
+                this.endRadius = endRadius;
+                this.radius = 1 + Math.random() * 10;
+                this.color = color;
+                this.progress = 0;
+                this.speed = speed;
+                this.isMoving = true;
+                this.angle = Math.round(Math.random() * 60); // Start angle
+
+                // Calculate center point between start and end
+                this.centerX = (startX + endX) / 2;
+                this.centerY = (startY + endY) / 2;
+
+                // Calculate radius of the circular path
+                this.radiusX = Math.round(endX - startX) / 2;
+                this.radiusY = Math.round(endY - startY) / 2;
+            }
+        }
+
+        // Helper functions
+        function shuffleArray(array) {
+            let currentIndex = array.length;
+            let randomIndex;
+
+            // While there remain elements to shuffle.
+            while (currentIndex !== 0) {
+                // Pick a remaining element.
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+
+                // And swap it with the current element.
+                [array[currentIndex], array[randomIndex]] = [
+                    array[randomIndex],
+                    array[currentIndex],
+                ];
+            }
+
+            return array;
+        }
+
+        const lerp = (start, end, t) => start * (1 - t) + end * t;
+        const easeInOutQuad = (t) => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+        // Main animation function
+        function initBubbleMorph() {
+            const canvas = document.getElementById('bubbleCanvas');
+            const ctx = canvas.getContext('2d');
+
+            // Set canvas size
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            // Create bubbles
+            // const colors = shuffleArray(['#15c7d3', '#066170', '#052b34']);
+            function getRandomColor() {
+                return '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+            }
+
+            // Generate multiple random colors
+            const colors = Array.from({ length: 3 }, () => getRandomColor());
+            const colorsCount = colors.length;
+            const bubbles = [];
+
+            for (let i = 0; i < colorsCount; i++) {
+                const startX = (Math.random() > 0.5 ? (-1 * Math.random() * canvas.width) : (0.8 * canvas.width)) + Math.random() * canvas.width;
+                const startY = Math.random() * canvas.height;
+                const endX = Math.random() * canvas.width;
+                const endY = (i * canvas.height / colorsCount) + Math.random() * (canvas.height / colorsCount);
+
+                bubbles.push(new Bubble(
+                    startX,
+                    startY,
+                    endX,
+                    endY,
+                    (canvas.width / 4) + Math.random() * (canvas.width / 3),
+                    (canvas.width / 2) + Math.random() * (canvas.width / 3),
+                    colors[i],
+                    0.008 + Math.random() * (Math.pow(1.2, i) * 0.015),
+                    i,
+                    canvas.width,
+                    canvas.height
+                ));
+            }
+
+            const img = new Image();
+            img.src = "noise.jpg";
+
+            const drawTexture = () => {
+                ctx.globalAlpha = 0.1;
+                ctx.filter = `none`;
+                ctx.globalCompositeOperation = 'screen';
+
+                const canvasAspect = canvas.width / canvas.height;
+                const imgAspect = img.width / img.height;
+
+                let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
+
+                if (imgAspect > canvasAspect) {
+                    drawHeight = canvas.height;
+                    drawWidth = img.width * (canvas.height / img.height);
+                    offsetX = (canvas.width - drawWidth) / 2;
+                } else {
+                    drawWidth = canvas.width;
+                    drawHeight = img.height * (canvas.width / img.width);
+                    offsetY = (canvas.height - drawHeight) / 2;
+                }
+
+                ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+                // ctx.globalAlpha = 1;
+            };
+
+            // Animation loop
+            let animationId;
+            function animate() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                let stillMoving = false;
+
+                for (const bubble of bubbles) {
+                    if (!bubble.isMoving) {
+                        // Draw stationary bubbles at end position
+                        ctx.beginPath();
+                        ctx.arc(bubble.x, bubble.y, bubble.radius, 0, Math.PI * 2);
+                        ctx.fillStyle = bubble.color;
+                        ctx.globalAlpha = 0.7;
+                        ctx.filter = `blur(${bubble.radius / 3}px)`;
+                        ctx.fill();
+                    } else {
+                        // Update progress with dynamic speed
+                        bubble.progress += bubble.speed * (1 - bubble.progress * 0.8);
+
+                        // Calculate eased progress
+                        const easedProgress = easeInOutQuad(bubble.progress);
+
+                        // Update angle for circular motion (0 to π radians)
+                        bubble.angle = Math.PI * easedProgress;
+
+                        // Calculate circular position (ellipse path)
+                        bubble.x = bubble.centerX + Math.sin(bubble.angle) * bubble.radiusX;
+                        bubble.y = bubble.centerY - Math.cos(bubble.angle) * bubble.radiusY;
+
+                        // Update radius size
+                        bubble.radius = lerp(bubble.startRadius, bubble.endRadius, easedProgress);
+
+                        // Draw bubble
+                        ctx.beginPath();
+                        ctx.arc(bubble.x, bubble.y, bubble.radius, 0, Math.PI * 2);
+                        ctx.fillStyle = bubble.color;
+                        ctx.globalAlpha = 0.7;
+                        ctx.filter = `blur(${bubble.radius / 3}px)`;
+                        ctx.fill();
+
+                        if (bubble.progress >= 1) {
+                            bubble.isMoving = false;
+                        } else {
+                            stillMoving = true;
+                        }
+                    }
+                }
+
+                drawTexture();
+
+                if (stillMoving) {
+                    setTimeout(() => {
+                        animationId = requestAnimationFrame(animate);
+                    }, maxCanvasRefreshInterval);
+                }
+            }
+
+            animate();
+
+            // Cleanup function
+            return function cleanup() {
+                cancelAnimationFrame(animationId);
+                window.removeEventListener('resize', resizeCanvas);
+            };
+        }
+
+        // Initialize the animation when the page loads
+        window.addEventListener('load', initBubbleMorph);
+    </script>
+</body>
+
+</html>
