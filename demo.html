@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nothing Atmosphere</title>
+    <style>
+        body {
+            margin-block: 10px;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        iframe {
+            aspect-ratio: 9/16;
+            width: 100%;
+            max-width: 400px;
+            border: none;
+            border-radius: 12px;
+        }
+    </style>
+</head>
+
+<body>
+    <iframe src="./src/index.html"></iframe>
+    <script>
+        (() => {
+            const iframe = document.querySelector("iframe");
+            const source = iframe.src;
+            window.setInterval(() => {
+                iframe.src = `${source}?v=${Date.now()}`;
+            }, 8e3);
+        })();
+    </script>
+</body>
+
+</html>
